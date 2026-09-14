@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scrdti"
+version = "0.1.0"
+description = "SCR-DTI: asymmetric evidence factorization for reliable drug-target prediction across data regimes."
+readme = "README.md"
+requires-python = ">=3.10,<3.12"
+license = {file = "LICENSE"}
+authors = [{name = "Xinyu Dong"}]
+dependencies = [
+  "numpy==1.26.4",
+  "pandas==2.0.0",
+  "pyarrow==22.0.0",
+  "PyYAML==6.0.2",
+  "scikit-learn==1.7.1",
+  "scipy==1.15.3",
+  "torch>=2.3.1,<2.5",
+]
+
+[project.optional-dependencies]
+encoders = [
+  "transformers==4.57.3",
+  "sentencepiece>=0.2.0",
+  "safetensors>=0.4.4",
+]
+chem = ["rdkit==2025.3.5"]
+dev = ["pytest>=8.2.2", "ruff>=0.5.5"]
+
+[project.scripts]
+scrdti = "scrdti.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

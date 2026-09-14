@@ -1,0 +1,20 @@
+SCR-DTI release notice
+======================
+
+This repository contains the paper-facing SCR-DTI implementation. It does not
+bundle trained model weights, benchmark datasets, Hugging Face model snapshots,
+or private cluster artifacts.
+
+The projection-network topology used for the pretrained molecular/protein
+representations follows the public GRAM-DTI implementation described as MIT
+licensed by its authors. SCR-DTI reimplements only the small projector topology
+needed by the paper-facing model; the GRAM-DTI repository itself is not vendored.
+
+The optional representation-precomputation command refers to the public model
+identifiers ibm-research/MoLFormer-XL-both-10pct, laituan245/molt5-base, and
+facebook/esm2_t33_650M_UR50D. Those model artifacts are not redistributed here
+and remain subject to their respective upstream licenses and terms.
+
+Benchmark data are not redistributed. In particular, users are responsible for
+complying with DrugBank and other source-specific data licenses.
+

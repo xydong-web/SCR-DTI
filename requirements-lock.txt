@@ -1,0 +1,12 @@
+# Runtime versions verified in the source SCR-DTI environment on 2026-09-14.
+# The CUDA build suffix for torch is platform-specific; install the appropriate
+# PyTorch wheel for your CPU/CUDA platform before installing this project.
+numpy==1.26.4
+pandas==2.0.0
+scipy==1.15.3
+scikit-learn==1.7.1
+pyarrow==22.0.0
+PyYAML==6.0.2
+transformers==4.57.3
+rdkit==2025.3.5
+

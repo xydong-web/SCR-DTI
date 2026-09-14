@@ -1,0 +1,16 @@
+benchmark: Yamanishi 08
+regime: warm-start
+notes: Entity-aware benchmark protocol; published workflow uses 1:10 positive-to-negative sampling and cross-validation.
+model:
+  use_hca: true
+  use_graph_context: false
+  use_kge_refinement: false
+train:
+  seed: 42
+  batch_size: 64
+  epochs: 60
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  gradient_clip_norm: 1.0
+  selection_metric: auprc
+

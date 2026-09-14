@@ -1,0 +1,21 @@
+benchmark: Hetionet
+regime: warm-start-strict-direct-edge-removed
+notes: Fold-specific validation/test direct DTI and inverse edges must be removed before KGE training; held-out positives must be excluded from KGE negative sampling. Temperature scaling is fit on pair-disjoint validation logits only.
+model:
+  use_hca: true
+  use_graph_context: true
+  graph_context_dim: 2
+  use_kge_refinement: true
+  kge_residual_shrink: 0.2
+  kge_residual_bound: 0.75
+  confidence_margin_bias: 1.0
+  confidence_margin_temperature: 1.0
+train:
+  seed: 42
+  batch_size: 64
+  epochs: 60
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  gradient_clip_norm: 1.0
+  selection_metric: auprc
+

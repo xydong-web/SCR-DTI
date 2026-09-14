@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use SCR-DTI, please cite the associated manuscript."
+title: "SCR-DTI: Asymmetric Evidence Factorization for Reliable Drug-Target Prediction Across Data Regimes"
+type: software
+version: 0.1.0
+date-released: 2026-09-14
+license: MIT
+authors:
+  - family-names: Dong
+    given-names: Xinyu
+  - family-names: Wang
+    given-names: Yuxiang
+  - family-names: Wang
+    given-names: Lanying
+  - family-names: Cheng
+    given-names: Weixun
+  - family-names: Luo
+    given-names: Xixuan
+  - family-names: Zhang
+    given-names: Jun
+  - family-names: Xiao
+    given-names: Yuanyuan
+  - family-names: Wang
+    given-names: Xiaorui
+  - family-names: Dong
+    given-names: Yawen
+  - family-names: Jayawardana
+    given-names: Barana C.
+  - family-names: Yao
+    given-names: Xiaojun
+  - family-names: Li
+    given-names: Yuquan
+  - family-names: Hao
+    given-names: Gefei
+
