@@ -121,3 +121,53 @@ It never rewrites the source checkpoint.
 
 See `docs/ARCHITECTURE.md`, `docs/DATA.md`, and `docs/REPRODUCIBILITY.md`.
 
+## Reproduce the release workflow
+
+The commands below cover the complete release workflow: environment setup, a
+CPU smoke test, feature precomputation, training, prediction, and evaluation.
+
+### 1. Install
+
+```bash
+git clone https://github.com/xydong-web/SCR-DTI.git
+cd SCR-DTI
+python -m venv .venv
+source .venv/bin/activate                 # PowerShell: .venv\\Scripts\\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[encoders,chem,dev]"
+```
+
+### 2. Run the verified CPU smoke test
+
+```bash
+scrdti make-synthetic --output runs/synthetic.npz --n 96 --seed 7
+scrdti train --config configs/examples/tiny_cpu.yaml \
+  --data runs/synthetic.npz --output runs/synthetic.pt --device cpu
+scrdti predict --config configs/examples/tiny_cpu.yaml \
+  --data runs/synthetic.npz --checkpoint runs/synthetic.pt \
+  --output runs/synthetic_predictions.csv --split 2 --device cpu
+scrdti evaluate --predictions runs/synthetic_predictions.csv
+```
+
+This is an installation smoke test, not a paper benchmark.
+
+### 3. Prepare and run a paper-scale dataset
+
+Create one pair-level CSV with `smiles`, `protein_sequence`, `label`, and
+`split`. Use `split=0` for train, `1` for validation, and `2` for test. Then:
+
+```bash
+scrdti precompute --input data/pairs.csv --output data/pairs.npz \
+  --smiles-column smiles --protein-column protein_sequence \
+  --label-column label --split-column split --batch-size 8
+scrdti train --config configs/paper/drugbank.yaml \
+  --data data/pairs.npz --output runs/drugbank.pt --device cuda
+scrdti predict --config configs/paper/drugbank.yaml \
+  --data data/pairs.npz --checkpoint runs/drugbank.pt \
+  --output runs/drugbank_test.csv --split 2 --device cuda
+scrdti evaluate --predictions runs/drugbank_test.csv
+```
+
+`precompute` downloads the three Hugging Face encoder weights on first use.
+Benchmark files, identifier mapping, graph/KGE artifacts, and fold generation
+remain dataset-specific; see `docs/DATA.md` before reporting paper results.
