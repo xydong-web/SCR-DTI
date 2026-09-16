@@ -72,6 +72,163 @@ The paper uses attention-mask-aware mean pooling. Molecular inputs are limited t
 256 tokens and protein inputs to 1,024 residues. Encoder weights are not bundled.
 See `docs/DATA.md` and `scrdti precompute --help`.
 
+## End-to-end reproduction
+
+The release is intentionally data-free. Reproduction therefore has four
+separate stages: obtain the benchmark source, convert it to the release CSV
+schema, extract the three frozen encoder representations, and train/evaluate
+from the resulting NPZ file. The repository does not silently download data or
+model weights.
+
+### 1. Obtain the benchmark data
+
+Use the original source whenever access is available. The following table lists
+the public entry points used to obtain the benchmark families documented in
+`configs/paper/`:
+
+| Benchmark | Download/source | Access note |
+| --- | --- | --- |
+| DrugBank | [DrugBank datasets](https://go.drugbank.com/releases/latest#datasets) | Registration and the DrugBank license are required. Do not redistribute the downloaded files. |
+| Davis | [Therapeutics Data Commons (TDC) DTI tasks](https://tdcommons.ai/multi_pred_tasks/drug_target_interaction/) | TDC provides a programmatic loader and standardized identifiers. |
+| KIBA | [TDC DTI tasks](https://tdcommons.ai/multi_pred_tasks/drug_target_interaction/) or the original KIBA release cited by TDC | Preserve the original affinity-to-binary conversion and split protocol. |
+| Yamanishi 08 | [TDC DTI tasks](https://tdcommons.ai/multi_pred_tasks/drug_target_interaction/) | Select the Yamanishi 08 family and retain compound/target identifiers before mapping. |
+| Hetionet | [Hetionet v1.0](https://github.com/hetio/hetionet) | Download the graph release and build fold-specific DTI/KGE inputs. |
+| Activation / Inhibition | [TDC DTI tasks](https://tdcommons.ai/multi_pred_tasks/drug_target_interaction/) | These are entity-aware binary protocols; keep the activity type and source metadata. |
+
+TDC is a convenient acquisition/normalization route, not a replacement for the
+paper protocol. Record the exact source version, download date, license, and
+any filtering or negative-sampling script in your experiment directory. For
+DrugBank, users must obtain the files directly from DrugBank. The repository
+does not include benchmark data, pretrained encoder weights, or trained
+checkpoints.
+
+### 2. Prepare the pair CSV
+
+Create one CSV row per compound-target pair with these columns:
+
+```text
+smiles,protein_sequence,label,split
+CCO,MKVL...,1,0
+CCN,MKVL...,0,1
+...
+```
+
+`label` is binary (`0` or `1`) and `split` is an integer with `0=train`,
+`1=validation`, and `2=test`. The CSV must contain canonicalizable SMILES and
+raw protein sequences. For entity-aware protocols, generate the splits before
+feature extraction and verify that the held-out compounds or targets do not
+occur in the training partition. The release does not infer entity-disjoint
+splits from an arbitrary CSV.
+
+For pairwise-random DrugBank/Davis/KIBA experiments, use the fixed split
+defined by the corresponding config. For warm-start, compound-disjoint, and
+target-disjoint experiments, use the matching file under `configs/paper/` and
+store the split-generation manifest alongside the CSV.
+
+### 3. Extract pooled encoder features
+
+Install the optional encoder dependencies, then run `precompute`:
+
+```bash
+python -m pip install -e ".[encoders,chem,dev]"
+
+scrdti precompute \
+  --input data/davis_pairs.csv \
+  --output data/davis_features.npz \
+  --smiles-column smiles \
+  --protein-column protein_sequence \
+  --label-column label \
+  --split-column split \
+  --batch-size 8 \
+  --device cuda
+```
+
+The command downloads the three Hugging Face encoder checkpoints on first use:
+
+- `ibm-research/MoLFormer-XL-both-10pct` for canonical SMILES;
+- `laituan245/molt5-base` for `SMILES=`-prefixed molecular text;
+- `facebook/esm2_t33_650M_UR50D` for protein sequences.
+
+Use `--device cpu` when no CUDA device is available. The first run can require
+substantial disk space and network bandwidth. The generated NPZ contains
+`smiles`, `text`, `protein`, `labels`, and `split`; optional graph/KGE arrays
+(`graph_context`, `graph_available`, `kge_score`, `kge_available`) can be added
+for Hetionet experiments. See `docs/DATA.md` for the exact array shapes.
+
+### 4. Train, predict, and evaluate
+
+Choose the configuration matching the benchmark and split regime:
+
+```bash
+# Example: Davis pairwise-random
+scrdti train \
+  --config configs/paper/davis.yaml \
+  --data data/davis_features.npz \
+  --output runs/davis/checkpoint.pt \
+  --device cuda
+
+scrdti predict \
+  --config configs/paper/davis.yaml \
+  --data data/davis_features.npz \
+  --checkpoint runs/davis/checkpoint.pt \
+  --output runs/davis/test_predictions.csv \
+  --split 2 \
+  --device cuda
+
+scrdti evaluate \
+  --predictions runs/davis/test_predictions.csv
+```
+
+`train` selects the checkpoint by validation AUPRC. `predict --split 1` writes
+validation predictions and `predict --split 2` writes test predictions. Do not
+fit thresholds, temperature scaling, or any other calibration parameter on the
+test split. If calibration is required, first write validation and test
+prediction CSVs and run:
+
+```bash
+scrdti calibrate \
+  --validation runs/davis/valid_predictions.csv \
+  --test runs/davis/test_predictions.csv \
+  --output runs/davis/test_calibrated.csv
+```
+
+Repeat the same sequence with the relevant files under `configs/paper/`:
+
+```text
+configs/paper/drugbank.yaml
+configs/paper/davis.yaml
+configs/paper/kiba.yaml
+configs/paper/yamanishi08/{warm_start,compound_disjoint,target_disjoint}.yaml
+configs/paper/hetionet/{warm_start,strict_direct_edge_removed,compound_disjoint,target_disjoint}.yaml
+configs/paper/activation/{warm_start,compound_disjoint,target_disjoint}.yaml
+configs/paper/inhibition/{warm_start,compound_disjoint,target_disjoint}.yaml
+```
+
+Hetionet runs require additional fold-specific graph-context and KGE arrays.
+For `strict_direct_edge_removed`, remove validation/test direct DTI edges and
+their inverse triples before KGE training, and exclude held-out positives from
+negative sampling. The public code provides the controls in
+`scrdti.graph_control` and the TorusE implementation in `scrdti.kge`; it does
+not build a Hetionet fold from a raw graph automatically.
+
+### Reproducibility checklist
+
+For every run, preserve the source dataset version, split manifest, config
+file, encoder model revisions, random seed, device, checkpoint, validation
+metrics, test prediction CSV, and the exact command line. The primary ranking
+metric is AUPRC; AUROC is complementary. The release smoke test remains useful
+for validating an installation without external data:
+
+```bash
+scrdti make-synthetic --output /tmp/scrdti_demo.npz --n 96 --seed 7
+scrdti train --config configs/examples/tiny_cpu.yaml \
+  --data /tmp/scrdti_demo.npz --output /tmp/scrdti_demo.pt
+scrdti predict --config configs/examples/tiny_cpu.yaml \
+  --data /tmp/scrdti_demo.npz --checkpoint /tmp/scrdti_demo.pt \
+  --output /tmp/scrdti_predictions.csv
+scrdti evaluate --predictions /tmp/scrdti_predictions.csv
+```
+
 ## Paper configurations
 
 `configs/paper/` documents the seven benchmark families used by the manuscript:
