@@ -8,25 +8,13 @@ local tests cover model construction, synthetic forward passes, evidence masks,
 confidence-margin behavior, bounded KGE refinement, config parsing, historical checkpoint
 mapping, and a tiny CPU train-predict-evaluate flow.
 
-## Reproduction checklist
+## Basic workflow
 
-1. Record the Git commit, Python version, PyTorch build, operating system, and
-   CPU/CUDA device.
-2. Download source data from `docs/DATA.md`, retaining licenses and checksums.
-3. Convert each benchmark to one pair-level CSV with `smiles`,
-   `protein_sequence`, `label`, and `split`.
-4. Freeze the split before `scrdti precompute`; use `0/1/2` for
-   train/validation/test and never fit calibration on test predictions.
-5. Run `precompute`, `train`, `predict`, and `evaluate` with matching YAML
-   dimensions.
-6. For graph/KGE experiments, save fold-specific triples, forbidden held-out
-   pairs, KGE seed, and optional NPZ arrays with the checkpoint.
-7. Select checkpoints by validation AUPRC and report test AUPRC as the primary
-   ranking metric; report AUROC and calibration metrics separately.
-
-Exact manuscript reproduction still requires dataset-specific identifier
-mapping and fold preparation because the original sources use different
-formats, licenses, and split definitions.
+Download the source data listed in `docs/DATA.md`, convert each benchmark to a
+pair-level CSV, and run `scrdti precompute` followed by `scrdti train`,
+`scrdti predict`, and `scrdti evaluate` with the matching YAML configuration.
+For graph/KGE experiments, prepare the fold-specific graph artifacts before
+training and include the optional arrays described in `docs/DATA.md`.
 
 ## What is intentionally external
 
